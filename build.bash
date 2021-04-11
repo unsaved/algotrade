@@ -24,13 +24,13 @@ MAINCLASS="$1"; shift
 
 [ -n "$DEST_URL" ] || DEST_URL=file:/tmp/repo
 [ -n "$VERSION" ] || VERSION=z01
+[ -n "$PROJECT_NAME" ] || PROJECT_NAME="$(basename $PWD)"
 
 Abort() {
     echo "Aborting $PROGNAME:  $*" 1>&2
     exit 1
 }
 
-PROJECT_NAME=gradle-ivyxml-plugin
 
 [ -n "$DO_RM" ] && {
     case "$DEST_URL" in file:*);; *)
