@@ -55,7 +55,8 @@ tasks.register('listArtifacts') { doLast {
 
 // PUBLISHING WORK FROM HERE ON
 
-project.version = '0.1a'
+project.version = 'z01'
+project.group = 'com.admc'
 
 task sourcesJar(type: Jar, dependsOn:classes) {
     exclude '**/.*/**'
