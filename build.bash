@@ -12,8 +12,8 @@ unset DO_RM
     shift
 }
 
-[ $# -ne 1 ] && {
-    echo "SYNTAX:  $PROGNAME MainClass
+[ $# -lt 1 ] && {
+    echo "SYNTAX:  $PROGNAME MainClass [gradle args...]
 Use env vars to override these defaults:
 VERSION:  0.1a
 DEST_URL: file:/tmp/repo
@@ -23,7 +23,7 @@ DEST_URL: file:/tmp/repo
 MAINCLASS="$1"; shift
 
 [ -n "$DEST_URL" ] || DEST_URL=file:/tmp/repo
-[ -n "$VERSION" ] || VERSION=z01
+[ -n "$VERSION" ] || VERSION=0.1a
 [ -n "$PROJECT_NAME" ] || PROJECT_NAME="$(basename $PWD)"
 
 Abort() {
@@ -39,7 +39,7 @@ Abort() {
     echo "Wiping ${DEST_URL#file:}..."
     rm -rf "${DEST_URL#file:}"
 }
-gradlew -Pmc="$MAINCLASS" -Purl="$DEST_URL" clean build uploadArchives &&
+gradlew -Pmc="$MAINCLASS" -Purl="$DEST_URL" "$@" clean uploadArchives &&
 echo -n "From build/libs/${PROJECT_NAME}-$VERSION.jar:  " &&
 java -jar build/libs/${PROJECT_NAME}-$VERSION.jar &&
 case "$DEST_URL" in file:*)
