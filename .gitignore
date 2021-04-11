@@ -1,0 +1,9 @@
+.gradle
+/gradle-app.setting
+.*.sw?
+*~
+*.bak
+~*
+.~*
+/local*
+/build

@@ -1,0 +1,147 @@
+plugins {
+    id 'groovy'
+    id 'java-library'
+    id 'maven'
+    id 'signing'
+}
+
+defaultTasks 'build'
+
+repositories {
+    jcenter()
+}
+
+configurations {
+    rtlibs
+}
+
+dependencies {
+    implementation 'org.codehaus.groovy:groovy-all:3.0.7'
+    implementation 'com.google.guava:guava:29.0-jre'
+    testImplementation 'org.spockframework:spock-core:2.0-M5-groovy-3.0'
+    testImplementation 'junit:junit:4.13'
+    api 'org.apache.commons:commons-math3:3.6.1'
+    rtlibs 'org.codehaus.groovy:groovy:3.0.7'
+}
+
+task popLibs (type: Copy) {
+    from (configurations.rtlibs)
+    //into 'build/libs'
+    into "/tmp/${project.name}.libs"
+}
+jar.dependsOn = [popLibs]
+
+jar {
+    doFirst {
+        if (!project.hasProperty('mc')) // mc == Main Class
+            throw new GradleException("Set property 'mc' to the Main Class")
+    }
+    manifest {
+        final String mainClass = project.hasProperty('mc') ? project.mc : 'DUMMY'
+        logger.info "manifesting with '$mainClass'"
+        attributes 'Main-Class': "com.admc.repotst.$mainClass",
+                   'Class-path': "groovy-3.0.7.jar /tmp/${project.name}.libs/groovy-3.0.7.jar"
+    }
+}
+
+tasks.register('tmp') { doLast {
+    logger.quiet "project name: $project.name"
+} }
+
+tasks.register('listArtifacts') { doLast {
+    final artifactFiles = configurations.archives.outgoing.artifacts.files.files
+    logger.quiet "${artifactFiles.size()} artifacts:\n${artifactFiles.join('\n')}"
+} }
+
+// PUBLISHING WORK FROM HERE ON
+
+project.version = '0.1a'
+
+task sourcesJar(type: Jar, dependsOn:classes) {
+    exclude '**/.*/**'
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+sourcesJar.description = 'Build sources jar file'
+
+task javadocJar(type: Jar, dependsOn:javadoc) {
+    exclude '**/.*/**'
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+}
+javadocJar.description = 'Build javadoc jar file'
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+signing {
+    //required { true }  // Use to only sign releasable builds
+    sign configurations.archives
+}
+
+if (project.hasProperty('repoUrl')) {
+    try {
+        ext.url = new URL(ext.repoUrl)
+    } catch (Exception e) {
+        throw new GradleException("Invalid 'repoUrl' value:\n$e")
+    }
+    System.exit 0
+}
+
+uploadArchives {
+    repositories.mavenDeployer {
+        beforeDeployment {
+            MavenDeployment deployment -> signing.signPom(deployment)
+        }
+        // This condition so 'url' property only required when executing task:
+        if (project.hasProperty('url')) repository(url: project.url) {
+            authentication([
+                userName: project.properties['publish.user'],
+                password: project.properties['publish.password'],
+            ])
+        }
+        pom.project {
+            // The hasProperty tests are necessary even for required variables
+            // because this code is evaluated even if the uploadArchives task
+            // will never be executed.
+            name 'Repository Test'
+            description 'Repository-publishing Test Project'
+            if (project.hasProperty('url')) url project.url
+            inceptionYear '2021'
+            /*
+            scm {
+                if (project.hasProperty('scm.url'))
+                    url project.property('scm.url')
+                if (project.hasProperty('scm.connection'))
+                    connection project.property('scm.connection')
+                if (project.hasProperty('scm.tag'))
+                    tag project.property('scm.tag')
+            }
+            */
+            organization {
+                name 'Axis Data Management Corp.'
+                url new URL('http://admc.com')
+            }
+            licenses {
+                license {
+                    name 'Apache 2.0'
+                    url 'https://github.com/unsaved/jcreole/raw/master/doc/LICENSE.txt'
+                    distribution 'repo'
+                }
+            }
+            developers {
+                developer {
+                    id 'unsaved'
+                    name 'Blaine Simpson'
+                    email 'blaine.simpson@admc.com'
+                }
+            }
+        }
+    }
+}
+
+uploadArchives { doLast {
+    logger.quiet "Archive files: $configurations.archives.files"
+} }
